@@ -1,0 +1,98 @@
+add_newline = true
+format = """
+$custom\
+$os\
+$username\
+$directory\
+$git_branch\
+$git_status\
+$git_state\
+$cmd_duration\
+$line_break\
+$character"""
+
+right_format = "$jobs$status$time"
+
+[custom.local_context]
+when = 'test -z "${SSH_CONNECTION}${SSH_TTY}"'
+command = 'hostname -s 2>/dev/null || hostname'
+format = '[LOCAL:$output]($style) '
+style = 'bold black bg:green'
+
+[custom.remote_context]
+when = 'test -n "${SSH_CONNECTION}${SSH_TTY}"'
+command = 'hostname -s 2>/dev/null || hostname'
+format = '[SSH:$output]($style) '
+style = 'bold white bg:red'
+
+[os]
+disabled = false
+format = '[$symbol]($style)'
+style = 'bold cyan'
+
+[os.symbols]
+Alpine = 'alpine '
+Amazon = 'amazon '
+Arch = 'arch '
+CentOS = 'centos '
+Debian = 'debian '
+Fedora = 'fedora '
+Linux = 'linux '
+Macos = 'mac '
+Mint = 'mint '
+NixOS = 'nix '
+Pop = 'pop '
+Raspbian = 'raspbian '
+Redhat = 'redhat '
+RedHatEnterprise = 'rhel '
+Ubuntu = 'ubuntu '
+Unknown = 'os '
+Windows = 'windows '
+
+[username]
+format = '[$user]($style) '
+show_always = false
+style_user = 'bold yellow'
+style_root = 'bold white bg:red'
+
+[hostname]
+disabled = true
+
+[directory]
+truncation_length = 4
+truncate_to_repo = false
+read_only = ' ro'
+style = 'bold blue'
+
+[git_branch]
+format = '[$symbol$branch(:$remote_branch)]($style) '
+symbol = 'git:'
+style = 'bold purple'
+
+[git_status]
+format = '([$all_status$ahead_behind]($style) )'
+style = 'bold red'
+
+[git_state]
+format = '([$state( $progress_current/$progress_total)]($style) )'
+style = 'bold yellow'
+
+[cmd_duration]
+min_time = 1000
+format = '[took $duration]($style) '
+style = 'yellow'
+
+[status]
+disabled = false
+format = '[exit $status]($style) '
+style = 'bold red'
+
+[time]
+disabled = false
+format = '[$time]($style)'
+style = 'dimmed white'
+
+[character]
+success_symbol = '[>](bold green)'
+error_symbol = '[>](bold red)'
+vimcmd_symbol = '[<](bold green)'

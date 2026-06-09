@@ -1,0 +1,7 @@
+.DS_Store
+*.backup.*
+home/.zcompdump*
+
+# Keep secrets and machine-local settings out of git.
+config/shell/env.local.zsh
+config/shell/profile.local.zsh
