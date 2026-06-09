@@ -2,6 +2,6 @@
 *.backup.*
 home/.zcompdump*
 
-# Keep secrets and machine-local settings out of git.
-config/shell/env.local.zsh
-config/shell/profile.local.zsh
+# Keep accidental local override copies out of git.
+env.local.zsh
+profile.local.zsh

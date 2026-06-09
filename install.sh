@@ -16,8 +16,8 @@ usage() {
 Usage: ./install.sh [options]
 
 Options:
-  --install-tools   Install supported packages and user-space tools.
-  --with-root       Use apt through sudo/root on Ubuntu when installing tools.
+  --install-tools   Install Ubuntu packages and user-space shell tools.
+  --with-root       Use apt through sudo/root when installing packages.
   --no-root         Do not use sudo/root; only install user-space tools.
   --dry-run         Print intended actions without changing files.
   -h, --help        Show this help.
@@ -70,12 +70,10 @@ ensure_dir() {
 link_file() {
   local src="$1"
   local dest="$2"
-  local dest_dir
   local current
   local backup
 
-  dest_dir="$(dirname -- "$dest")"
-  ensure_dir "$dest_dir"
+  ensure_dir "$(dirname -- "$dest")"
 
   if [ -L "$dest" ]; then
     current="$(readlink "$dest")"
@@ -95,23 +93,19 @@ link_file() {
   run ln -s "$src" "$dest"
 }
 
-is_ubuntu_like() {
+is_ubuntu() {
   [ -r /etc/os-release ] || return 1
   . /etc/os-release
-  case "${ID:-} ${ID_LIKE:-}" in
-    *ubuntu*|*debian*)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
+  [ "${ID:-}" = "ubuntu" ]
 }
 
-install_ubuntu_packages() {
+install_apt_packages() {
   local sudo_cmd=()
 
-  is_ubuntu_like || return 0
+  if ! is_ubuntu; then
+    log "skip: apt package install is only supported on Ubuntu"
+    return 0
+  fi
 
   if [ "$USE_ROOT" = "no" ]; then
     log "skip: root package install disabled"
@@ -120,17 +114,13 @@ install_ubuntu_packages() {
 
   if [ "$(id -u)" -ne 0 ]; then
     if ! have sudo; then
-      if [ "$USE_ROOT" = "yes" ]; then
-        log "warn: --with-root requested, but sudo is not available"
-      else
-        log "skip: sudo is not available"
-      fi
+      log "skip: sudo is not available"
       return 0
     fi
     sudo_cmd=(sudo)
   fi
 
-  log "install: Ubuntu shell packages"
+  log "install: Ubuntu packages"
   run "${sudo_cmd[@]}" apt-get update
   run "${sudo_cmd[@]}" apt-get install -y \
     zsh \
@@ -141,25 +131,7 @@ install_ubuntu_packages() {
     ripgrep \
     bat \
     jq \
-    command-not-found \
-    python3-pygments
-}
-
-install_macos_packages() {
-  [ "$(uname -s)" = "Darwin" ] || return 0
-  have brew || {
-    log "skip: Homebrew not found"
-    return 0
-  }
-
-  log "install: macOS shell packages"
-  run brew install \
-    starship \
-    zsh-autosuggestions \
-    zsh-syntax-highlighting \
-    zsh-history-substring-search \
-    zsh-completions \
-    fzf
+    command-not-found
 }
 
 clone_or_update() {
@@ -181,26 +153,16 @@ clone_or_update() {
   run git clone --depth=1 "$repo" "$dest"
 }
 
-install_oh_my_zsh() {
-  if [ -d "$HOME/.oh-my-zsh" ]; then
-    log "ok: Oh My Zsh already installed"
-    return
-  fi
-
-  if ! have git; then
-    log "skip: git is required to install Oh My Zsh"
-    return
-  fi
-
-  log "install: Oh My Zsh"
-  clone_or_update https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh"
-}
-
 install_zsh_plugins() {
-  local plugin_home="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
+  local plugin_home="$HOME/.oh-my-zsh/custom/plugins"
 
   if ! have git; then
     log "skip: git is required to install zsh plugins"
+    return
+  fi
+
+  if [ "$DRY_RUN" -ne 1 ] && [ ! -r "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
+    log "skip: Oh My Zsh is not installed"
     return
   fi
 
@@ -209,6 +171,32 @@ install_zsh_plugins() {
   clone_or_update https://github.com/zsh-users/zsh-syntax-highlighting.git "$plugin_home/zsh-syntax-highlighting"
   clone_or_update https://github.com/zsh-users/zsh-history-substring-search.git "$plugin_home/zsh-history-substring-search"
   clone_or_update https://github.com/zsh-users/zsh-completions.git "$plugin_home/zsh-completions"
+  clone_or_update https://github.com/Aloxaf/fzf-tab.git "$plugin_home/fzf-tab"
+}
+
+install_oh_my_zsh() {
+  if [ -d "$HOME/.oh-my-zsh/.git" ]; then
+    log "update: $HOME/.oh-my-zsh"
+    run git -C "$HOME/.oh-my-zsh" pull --ff-only
+    return
+  fi
+
+  if [ -r "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
+    log "ok: Oh My Zsh already installed"
+    return
+  fi
+
+  if [ -e "$HOME/.oh-my-zsh" ]; then
+    log "skip: $HOME/.oh-my-zsh exists and is not a git checkout"
+    return
+  fi
+
+  if ! have git; then
+    log "skip: git is required to install Oh My Zsh"
+    return
+  fi
+
+  clone_or_update https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh"
 }
 
 install_starship() {
@@ -225,21 +213,26 @@ install_starship() {
   fi
 
   ensure_dir "$HOME/.local/bin"
-  tmp="$(mktemp)"
   log "install: Starship -> $HOME/.local/bin"
   if [ "$DRY_RUN" -eq 1 ]; then
-    log "dry-run: curl -fsSL https://starship.rs/install.sh -o $tmp"
-    log "dry-run: sh $tmp -b $HOME/.local/bin -y"
+    log "dry-run: curl -fsSL https://starship.rs/install.sh -o /tmp/starship-install.sh"
+    log "dry-run: sh /tmp/starship-install.sh -b $HOME/.local/bin -y"
   else
-    curl -fsSL https://starship.rs/install.sh -o "$tmp"
-    sh "$tmp" -b "$HOME/.local/bin" -y
+    tmp="$(mktemp)"
+    curl -fsSL https://starship.rs/install.sh -o "$tmp" || {
+      rm -f "$tmp"
+      return 1
+    }
+    sh "$tmp" -b "$HOME/.local/bin" -y || {
+      rm -f "$tmp"
+      return 1
+    }
     rm -f "$tmp"
   fi
 }
 
 install_tools() {
-  install_ubuntu_packages
-  install_macos_packages
+  install_apt_packages
   install_starship
   install_oh_my_zsh
   install_zsh_plugins
@@ -247,8 +240,8 @@ install_tools() {
 
 link_dotfiles() {
   ensure_dir "$HOME/.config/shell"
+  ensure_dir "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
   ensure_dir "${XDG_STATE_HOME:-$HOME/.local/state}/zsh"
-  ensure_dir "$HOME/.local/bin"
 
   link_file "$SCRIPT_DIR/home/.zshrc" "$HOME/.zshrc"
   link_file "$SCRIPT_DIR/home/.zprofile" "$HOME/.zprofile"

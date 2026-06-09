@@ -1,6 +1,6 @@
 # Dotfiles
 
-Portable shell setup for macOS and Ubuntu. The same branch is intended to work on local machines, remote Ubuntu hosts, and machines where `sudo` is not available.
+Lean Ubuntu zsh setup for local machines and remote hosts. It works with root access when available and has a no-root mode for hosts where `zsh`, `git`, and `curl` are already installed.
 
 ## Install
 
@@ -10,43 +10,65 @@ Link dotfiles only:
 ./install.sh
 ```
 
-Ubuntu with `sudo` available:
+Install Ubuntu packages plus Starship, Oh My Zsh, and zsh plugins:
 
 ```sh
 ./install.sh --install-tools --with-root
 ```
 
-Ubuntu without `sudo`:
+No-root mode only installs user-space tools when `git` and `curl` are already available:
 
 ```sh
 ./install.sh --install-tools --no-root
 ```
 
-No-root mode installs user-space pieces such as Starship and zsh plugins when `git` and `curl` are already available. It cannot install the system `zsh` package without root, so `zsh` must already exist on that host.
-
 Existing destination files are moved aside with a timestamped `.backup.*` suffix before symlinks are created.
 
-## Local Secrets
+No-root mode cannot install Ubuntu packages, so `zsh` must already be installed on that host.
 
-Do not put API keys or machine-local exports in tracked files. Put them in:
+## Local Overrides
+
+Secrets and machine-local exports belong here:
 
 ```sh
 ~/.config/shell/env.local.zsh
 ```
 
-Login-shell-only local setup can go in:
+Login-shell-only local setup belongs here:
 
 ```sh
 ~/.config/shell/profile.local.zsh
 ```
 
-The zsh config sources these files when they exist.
+## Prompt
 
-## Starship Context
-
-The prompt starts with a context badge:
+Starship shows a context badge at the start of the prompt:
 
 - `LOCAL:<host>` for local shells
 - `SSH:<host>` for remote shells
 
-The remote badge is styled differently from the local badge so SSH sessions are obvious at a glance. The config uses ASCII labels instead of font-specific icons so it works on bare Ubuntu terminals too.
+This is automatic. The Starship config checks `SSH_CONNECTION` and `SSH_TTY`; when either is set, it shows the remote badge.
+
+To make the distinction more obvious, edit [config/starship.toml](config/starship.toml):
+
+```toml
+[custom.local_context]
+format = '[LOCAL:$output]($style) '
+style = 'bold black bg:green'
+
+[custom.remote_context]
+format = '[SSH:$output]($style) '
+style = 'bold white bg:red'
+```
+
+The easiest changes are the label text (`LOCAL` / `SSH`) and the background colors (`bg:green` / `bg:red`). For example, use `format = '[REMOTE:$output]($style) '` or `style = 'bold white bg:purple'`.
+
+## Shell Plugins
+
+Oh My Zsh is kept intentionally small:
+
+- built-in plugins: `git`, `sudo`, `command-not-found`, `extract`, `colored-man-pages`
+- TTY-only built-in plugin: `fzf` when `fzf` is installed
+- external plugins: `zsh-autosuggestions`, `zsh-syntax-highlighting`, `zsh-history-substring-search`, `zsh-completions`, `fzf-tab`
+
+`fzf-tab` is the one extra plugin beyond your previous setup; it gives searchable tab-completion menus without changing normal shell behavior much.

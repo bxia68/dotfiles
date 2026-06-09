@@ -1,7 +1,6 @@
 add_newline = true
 format = """
 $custom\
-$os\
 $username\
 $directory\
 $git_branch\
@@ -11,8 +10,10 @@ $cmd_duration\
 $line_break\
 $character"""
 
-right_format = "$jobs$status$time"
+right_format = "$jobs$status"
 
+# Local vs remote is detected from SSH_CONNECTION/SSH_TTY.
+# Change format labels or style colors here if you want a stronger distinction.
 [custom.local_context]
 when = 'test -z "${SSH_CONNECTION}${SSH_TTY}"'
 command = 'hostname -s 2>/dev/null || hostname'
@@ -25,38 +26,11 @@ command = 'hostname -s 2>/dev/null || hostname'
 format = '[SSH:$output]($style) '
 style = 'bold white bg:red'
 
-[os]
-disabled = false
-format = '[$symbol]($style)'
-style = 'bold cyan'
-
-[os.symbols]
-Alpine = 'alpine '
-Amazon = 'amazon '
-Arch = 'arch '
-CentOS = 'centos '
-Debian = 'debian '
-Fedora = 'fedora '
-Linux = 'linux '
-Macos = 'mac '
-Mint = 'mint '
-NixOS = 'nix '
-Pop = 'pop '
-Raspbian = 'raspbian '
-Redhat = 'redhat '
-RedHatEnterprise = 'rhel '
-Ubuntu = 'ubuntu '
-Unknown = 'os '
-Windows = 'windows '
-
 [username]
 format = '[$user]($style) '
 show_always = false
 style_user = 'bold yellow'
 style_root = 'bold white bg:red'
-
-[hostname]
-disabled = true
 
 [directory]
 truncation_length = 4
@@ -86,11 +60,6 @@ style = 'yellow'
 disabled = false
 format = '[exit $status]($style) '
 style = 'bold red'
-
-[time]
-disabled = false
-format = '[$time]($style)'
-style = 'dimmed white'
 
 [character]
 success_symbol = '[>](bold green)'
