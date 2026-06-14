@@ -3,11 +3,29 @@
 
 typeset -U path PATH fpath
 
+_dotfiles_load_homebrew() {
+  (( $+commands[brew] )) && return
+
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -x /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+}
+_dotfiles_load_homebrew
+unfunction _dotfiles_load_homebrew
+
+for _dotfiles_path_dir in /usr/local/bin /usr/bin /bin /usr/sbin /sbin; do
+  [[ -d "$_dotfiles_path_dir" ]] && path+=("$_dotfiles_path_dir")
+done
+unset _dotfiles_path_dir
+
 [[ -d "$HOME/.local/bin" ]] && path=("$HOME/.local/bin" "${path[@]}")
 [[ -d "$HOME/.fzf/bin" ]] && path=("$HOME/.fzf/bin" "${path[@]}")
 [[ -d "$HOME/bin" ]] && path=("$HOME/bin" "${path[@]}")
 [[ -d "$HOME/go/bin" ]] && path+=("$HOME/go/bin")
 export PATH
+rehash
 
 [[ -r "$HOME/.config/shell/env.local.zsh" ]] && source "$HOME/.config/shell/env.local.zsh"
 

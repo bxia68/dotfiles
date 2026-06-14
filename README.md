@@ -72,6 +72,8 @@ For link-only setup, use:
 ./install-macos.sh --no-tools
 ```
 
+New macOS zsh shells load Homebrew automatically from `/opt/homebrew` or `/usr/local`, so Starship and other formula tools are available even when the terminal starts with a minimal `PATH`. If a new shell still shows the default `%` prompt, confirm the terminal profile is starting `/bin/zsh` and rerun `./install-macos.sh`.
+
 ## Local Overrides
 
 Secrets and machine-local exports belong here:
