@@ -44,9 +44,64 @@ plugins=(
   colored-man-pages
 )
 
-if [[ -t 0 && -t 1 ]] && (( $+commands[fzf] )); then
+_fzf_has_builtin_zsh_integration() {
+  local fzf_version
+  fzf_version="${"$(fzf --version 2>/dev/null)"#fzf }"
+
+  autoload -Uz is-at-least
+  is-at-least 0.48.0 "${${(s: :)fzf_version}[1]}" 2>/dev/null
+}
+
+_fzf_has_key_bindings() {
+  local fzf_base fzf_shell fzf_share
+
+  [[ -r /usr/share/doc/fzf/examples/key-bindings.zsh ]] && return 0
+  [[ -n "${PREFIX:-}" && -r "$PREFIX/share/fzf/key-bindings.zsh" ]] && return 0
+
+  for fzf_base in \
+    "${FZF_BASE:-}" \
+    "$HOME/.fzf" \
+    "$HOME/.nix-profile/share/fzf" \
+    "${XDG_DATA_HOME:-$HOME/.local/share}/fzf" \
+    "/usr/local/opt/fzf" \
+    "/opt/homebrew/opt/fzf" \
+    "/usr/share/fzf" \
+    "/usr/local/share/examples/fzf"; do
+    [[ -n "$fzf_base" && -d "$fzf_base" ]] || continue
+    fzf_shell="$fzf_base"
+    [[ -d "$fzf_base/shell" ]] && fzf_shell="$fzf_base/shell"
+    [[ -r "$fzf_shell/key-bindings.zsh" ]] && return 0
+  done
+
+  if (( $+commands[fzf-share] )); then
+    fzf_share="$(fzf-share 2>/dev/null)" || return 1
+    [[ -r "$fzf_share/key-bindings.zsh" || -r "$fzf_share/shell/key-bindings.zsh" ]] && return 0
+  fi
+
+  return 1
+}
+
+_fzf_omz_plugin_safe() {
+  [[ -t 0 && -t 1 ]] || return 1
+  (( $+commands[fzf] )) || return 1
+
+  _fzf_has_builtin_zsh_integration && return 0
+
+  if (( $+commands[apt] || $+commands[apt-get] )); then
+    if [[ -d /usr/share/doc/fzf/examples && ! -r /usr/share/doc/fzf/examples/key-bindings.zsh ]]; then
+      return 1
+    fi
+    _fzf_has_key_bindings
+    return
+  fi
+
+  return 0
+}
+
+if _fzf_omz_plugin_safe; then
   plugins+=(fzf)
 fi
+unfunction _fzf_has_builtin_zsh_integration _fzf_has_key_bindings _fzf_omz_plugin_safe
 
 [[ -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]] && plugins+=(zsh-autosuggestions)
 [[ -d "$ZSH_CUSTOM/plugins/zsh-history-substring-search" ]] && plugins+=(zsh-history-substring-search)
