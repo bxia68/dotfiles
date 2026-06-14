@@ -1,30 +1,76 @@
 # Dotfiles
 
-Lean Ubuntu zsh setup for local machines and remote hosts. It works with root access when available and has a no-root mode for hosts where `zsh`, `git`, and `curl` are already installed.
+Lean zsh setup for Ubuntu, macOS, local machines, and remote hosts. Installers default to no-root user-space setup and can use apt or Homebrew bootstrap when explicitly allowed.
 
 ## Install
 
-Link dotfiles only:
+### Ubuntu
+
+Install tools and link dotfiles:
 
 ```sh
 ./install.sh
 ```
 
-Install Ubuntu packages plus Starship, Oh My Zsh, and zsh plugins:
+Use apt through sudo/root when installing Ubuntu packages:
 
 ```sh
-./install.sh --install-tools --with-root
+./install.sh --with-root
 ```
 
-No-root mode only installs user-space tools when `git` and `curl` are already available:
+No-root mode is the default. This skips apt and installs only user-space tools:
 
 ```sh
-./install.sh --install-tools --no-root
+./install.sh --no-root
 ```
 
 Existing destination files are moved aside with a timestamped `.backup.*` suffix before symlinks are created.
 
-No-root mode cannot install Ubuntu packages, so `zsh` must already be installed on that host.
+The no-root path never runs sudo or apt. It uses `git` for Oh My Zsh, zsh plugins, and `fzf`; it uses `curl` for Starship and `curl` or `wget` for fzf's binary installer.
+
+The tool install path includes `fzf`. With root, Ubuntu installs it through apt. Without root, the installer clones `fzf` to `~/.fzf` and links the binary into `~/.local/bin`.
+
+No-root mode cannot install Ubuntu packages such as `zsh`, `ripgrep`, `bat`, or `jq`, so install those through apt when root/sudo is available.
+
+For link-only setup, use:
+
+```sh
+./install.sh --no-tools
+```
+
+### macOS
+
+Install tools and link dotfiles:
+
+```sh
+./install-macos.sh
+```
+
+Allow Homebrew bootstrap if `brew` is missing:
+
+```sh
+./install-macos.sh --with-root
+```
+
+No-root mode is the default. It uses existing Homebrew only. If `brew` is missing, it still installs the user-space fallback tools it can and links dotfiles:
+
+```sh
+./install-macos.sh --no-root
+```
+
+The no-root path never runs sudo. It uses `git` for Oh My Zsh, zsh plugins, and `fzf`; it uses `curl` for Starship and `curl` or `wget` for fzf's binary installer.
+
+The tool install path includes `fzf`. With Homebrew, macOS installs it as a formula. Without Homebrew, the installer clones `fzf` to `~/.fzf` and links the binary into `~/.local/bin`.
+
+Without Homebrew, no-root mode cannot install formula packages such as `zsh`, `ripgrep`, `bat`, or `jq`.
+
+Do not run the macOS script with `sudo`. The `--with-root` flag only allows the Homebrew bootstrap script to ask for privileges if Homebrew is missing.
+
+For link-only setup, use:
+
+```sh
+./install-macos.sh --no-tools
+```
 
 ## Local Overrides
 
@@ -46,27 +92,44 @@ Starship shows a context badge at the start of the prompt:
 
 - `LOCAL:<host>` for local shells
 - `SSH:<host>` for remote shells
+- `CTR:<host>` for obvious container shells
+- custom `<label>:<host>` badges from local config
 
-This is automatic. The Starship config checks `SSH_CONNECTION` and `SSH_TTY`; when either is set, it shows the remote badge.
+This is automatic by default. The zsh config sets `DOTFILES_SHELL_CONTEXT` to `local`, `ssh`, or `container`, and Starship uses that value. Container detection is intentionally simple: it checks common container env vars and files such as `/.dockerenv` and `/run/.containerenv`.
 
-To make the distinction more obvious, edit [config/starship.toml](config/starship.toml):
+The local badge is hidden on `Bills-Laptop` to keep the normal local prompt quiet.
 
-```toml
-[palettes.catppuccin_mocha]
-base = '#1e1e2e'
-green = '#a6e3a1'
-red = '#f38ba8'
+For reliable container or machine-specific badges, set a custom context in `~/.config/shell/env.local.zsh`:
 
-[custom.local_context]
-format = '[LOCAL:$output]($style) '
-style = 'bold fg:base bg:green'
-
-[custom.remote_context]
-format = '[SSH:$output]($style) '
-style = 'bold fg:base bg:red'
+```sh
+export DOTFILES_CONTEXT_LABEL=CTR
+export DOTFILES_CONTEXT_COLOR=peach
 ```
 
-The easiest changes are the label text (`LOCAL` / `SSH`) and the badge colors. For example, use `format = '[REMOTE:$output]($style) '`, change `red`, or change `style` to another palette color such as `style = 'bold fg:base bg:mauve'`.
+That shows `CTR:<host>`. Supported colors are `green`, `red`, `peach`, `blue`, `mauve`, and `yellow`.
+
+If you prefer a separate small config file, create `~/.config/shell/context`:
+
+```sh
+DOTFILES_CONTEXT_LABEL=CTR
+DOTFILES_CONTEXT_COLOR=peach
+```
+
+There is also a copyable example at [config/shell/context.container.example](config/shell/context.container.example).
+
+Custom context env vars win first. If they are absent, zsh reads `~/.config/shell/context`; if that file is absent too, it falls back to automatic container/SSH/local detection. The old boolean marker `~/.config/shell/container` still works and maps to `CTR` with `peach`.
+
+To force one of the built-in contexts instead, set one of these in `~/.config/shell/env.local.zsh`:
+
+```sh
+export DOTFILES_SHELL_CONTEXT_OVERRIDE=local
+export DOTFILES_SHELL_CONTEXT_OVERRIDE=ssh
+export DOTFILES_SHELL_CONTEXT_OVERRIDE=container
+```
+
+For a direct `ssh cuda-container` style connection, remember that the SSH alias `cuda-container` is only known to your local SSH client. If it still shows `SSH:<host>`, use the custom context env vars or file above inside that container.
+
+Default badge colors and the `❯` prompt arrow live in [config/starship.toml](config/starship.toml).
 
 ## Shell Plugins
 

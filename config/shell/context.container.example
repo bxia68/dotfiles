@@ -1,0 +1,5 @@
+# Copy to ~/.config/shell/context inside a container.
+#
+# Available colors: green, red, peach, blue, mauve, yellow.
+DOTFILES_CONTEXT_LABEL=CTR
+DOTFILES_CONTEXT_COLOR=peach

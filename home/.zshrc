@@ -1,14 +1,67 @@
-# Ubuntu interactive zsh config. Keep secrets and machine-local exports in
-# ~/.config/shell/env.local.zsh.
+# Interactive zsh config for Ubuntu and macOS. Keep secrets and machine-local
+# exports in ~/.config/shell/env.local.zsh.
 
 typeset -U path PATH fpath
 
 [[ -d "$HOME/.local/bin" ]] && path=("$HOME/.local/bin" "${path[@]}")
+[[ -d "$HOME/.fzf/bin" ]] && path=("$HOME/.fzf/bin" "${path[@]}")
 [[ -d "$HOME/bin" ]] && path=("$HOME/bin" "${path[@]}")
 [[ -d "$HOME/go/bin" ]] && path+=("$HOME/go/bin")
 export PATH
 
 [[ -r "$HOME/.config/shell/env.local.zsh" ]] && source "$HOME/.config/shell/env.local.zsh"
+
+if [[ -z "${DOTFILES_CONTEXT_LABEL:-}" && -r "$HOME/.config/shell/context" ]]; then
+  source "$HOME/.config/shell/context"
+  [[ -n "${label:-}" && -z "${DOTFILES_CONTEXT_LABEL:-}" ]] && DOTFILES_CONTEXT_LABEL="$label"
+  [[ -n "${color:-}" && -z "${DOTFILES_CONTEXT_COLOR:-}" ]] && DOTFILES_CONTEXT_COLOR="$color"
+  unset label color
+fi
+
+_dotfiles_use_custom_context() {
+  local color="${DOTFILES_CONTEXT_COLOR:-peach}"
+  local label="${DOTFILES_CONTEXT_LABEL:-}"
+
+  [[ -n "$label" ]] || return 1
+  [[ "$label" =~ '^[A-Za-z0-9_.-]{1,16}$' ]] || label=CTX
+
+  case "$color" in
+    green|red|peach|blue|mauve|yellow) ;;
+    *) color=peach ;;
+  esac
+
+  export DOTFILES_SHELL_CONTEXT=custom
+  export DOTFILES_CONTEXT_LABEL="$label"
+  export DOTFILES_CONTEXT_COLOR="$color"
+}
+
+_dotfiles_use_auto_context() {
+  if [[ -n "${container:-}${CONTAINER:-}" || -f /.dockerenv || -f /run/.containerenv ]]; then
+    export DOTFILES_SHELL_CONTEXT=container
+  elif [[ -n "${SSH_CONNECTION}${SSH_TTY}" ]]; then
+    export DOTFILES_SHELL_CONTEXT=ssh
+  else
+    export DOTFILES_SHELL_CONTEXT=local
+  fi
+}
+
+case "${DOTFILES_SHELL_CONTEXT_OVERRIDE:-}" in
+  local|ssh|container)
+    export DOTFILES_SHELL_CONTEXT="$DOTFILES_SHELL_CONTEXT_OVERRIDE"
+    ;;
+  *)
+    if _dotfiles_use_custom_context; then
+      :
+    elif [[ -e "$HOME/.config/shell/container" ]]; then
+      export DOTFILES_CONTEXT_LABEL=CTR
+      export DOTFILES_CONTEXT_COLOR=peach
+      _dotfiles_use_custom_context
+    else
+      _dotfiles_use_auto_context
+    fi
+    ;;
+esac
+unfunction _dotfiles_use_custom_context _dotfiles_use_auto_context
 
 HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
 HISTSIZE=50000

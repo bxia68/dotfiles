@@ -13,12 +13,12 @@ log() {
 
 usage() {
   cat <<'EOF'
-Usage: ./install.sh [options]
+Usage: ./install-macos.sh [options]
 
 Options:
   --no-tools        Link dotfiles only; do not install tools.
-  --with-root       Use apt through sudo/root when installing packages.
-  --no-root         Do not use sudo/root; only install user-space tools. Default.
+  --with-root       Allow Homebrew bootstrap if brew is missing.
+  --no-root         Do not use sudo/root; use existing Homebrew only. Default.
   --dry-run         Print intended actions without changing files.
   -h, --help        Show this help.
 EOF
@@ -93,46 +93,78 @@ link_file() {
   run ln -s "$src" "$dest"
 }
 
-is_ubuntu() {
-  [ -r /etc/os-release ] || return 1
-  # shellcheck source=/dev/null
-  . /etc/os-release
-  [ "${ID:-}" = "ubuntu" ]
+is_macos() {
+  [ "$(uname -s)" = "Darwin" ]
 }
 
-install_apt_packages() {
-  local sudo_cmd=()
-
-  if ! is_ubuntu; then
-    log "skip: apt package install is only supported on Ubuntu"
+load_brew() {
+  if have brew; then
     return 0
+  fi
+
+  if [ -x /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [ -x /usr/local/bin/brew ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+}
+
+install_homebrew() {
+  load_brew
+  if have brew; then
+    log "ok: Homebrew already installed"
+    return
   fi
 
   if [ "$USE_ROOT" = "no" ]; then
-    log "skip: root package install disabled"
-    return 0
+    log "skip: Homebrew is missing and root use is disabled"
+    return
   fi
 
-  if [ "$(id -u)" -ne 0 ]; then
-    if ! have sudo; then
-      log "skip: sudo is not available"
-      return 0
+  if ! have curl; then
+    log "skip: curl is required to install Homebrew"
+    return
+  fi
+
+  log "install: Homebrew"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    log "dry-run: NONINTERACTIVE=1 /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+  else
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    load_brew
+  fi
+}
+
+install_brew_packages() {
+  local package
+  local packages=(
+    zsh
+    git
+    curl
+    ca-certificates
+    fzf
+    ripgrep
+    bat
+    jq
+    starship
+  )
+
+  load_brew
+  if ! have brew; then
+    log "skip: Homebrew packages require brew"
+    return
+  fi
+
+  log "install: Homebrew packages"
+  run brew update
+
+  for package in "${packages[@]}"; do
+    if [ "$DRY_RUN" -ne 1 ] && brew list --formula "$package" >/dev/null 2>&1; then
+      log "ok: $package already installed"
+    else
+      run brew install "$package"
     fi
-    sudo_cmd=(sudo)
-  fi
-
-  log "install: Ubuntu packages"
-  run "${sudo_cmd[@]}" apt-get update
-  run "${sudo_cmd[@]}" apt-get install -y \
-    zsh \
-    git \
-    curl \
-    ca-certificates \
-    fzf \
-    ripgrep \
-    bat \
-    jq \
-    command-not-found
+  done
 }
 
 clone_or_update() {
@@ -161,12 +193,12 @@ install_fzf_user() {
   fi
 
   if ! have git; then
-    log "skip: git is required to install fzf without apt"
+    log "skip: git is required to install fzf without Homebrew"
     return
   fi
 
   if ! have curl && ! have wget; then
-    log "skip: curl or wget is required to install fzf without apt"
+    log "skip: curl or wget is required to install fzf without Homebrew"
     return
   fi
 
@@ -191,52 +223,6 @@ install_fzf_user() {
   else
     log "warn: fzf binary was not created at $HOME/.fzf/bin/fzf"
   fi
-}
-
-install_zsh_plugins() {
-  local plugin_home="$HOME/.oh-my-zsh/custom/plugins"
-
-  if ! have git; then
-    log "skip: git is required to install zsh plugins"
-    return
-  fi
-
-  if [ "$DRY_RUN" -ne 1 ] && [ ! -r "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
-    log "skip: Oh My Zsh is not installed"
-    return
-  fi
-
-  ensure_dir "$plugin_home"
-  clone_or_update https://github.com/zsh-users/zsh-autosuggestions.git "$plugin_home/zsh-autosuggestions"
-  clone_or_update https://github.com/zsh-users/zsh-syntax-highlighting.git "$plugin_home/zsh-syntax-highlighting"
-  clone_or_update https://github.com/zsh-users/zsh-history-substring-search.git "$plugin_home/zsh-history-substring-search"
-  clone_or_update https://github.com/zsh-users/zsh-completions.git "$plugin_home/zsh-completions"
-  clone_or_update https://github.com/Aloxaf/fzf-tab.git "$plugin_home/fzf-tab"
-}
-
-install_oh_my_zsh() {
-  if [ -d "$HOME/.oh-my-zsh/.git" ]; then
-    log "update: $HOME/.oh-my-zsh"
-    run git -C "$HOME/.oh-my-zsh" pull --ff-only
-    return
-  fi
-
-  if [ -r "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
-    log "ok: Oh My Zsh already installed"
-    return
-  fi
-
-  if [ -e "$HOME/.oh-my-zsh" ]; then
-    log "skip: $HOME/.oh-my-zsh exists and is not a git checkout"
-    return
-  fi
-
-  if ! have git; then
-    log "skip: git is required to install Oh My Zsh"
-    return
-  fi
-
-  clone_or_update https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh"
 }
 
 install_starship() {
@@ -271,8 +257,55 @@ install_starship() {
   fi
 }
 
+install_oh_my_zsh() {
+  if [ -d "$HOME/.oh-my-zsh/.git" ]; then
+    log "update: $HOME/.oh-my-zsh"
+    run git -C "$HOME/.oh-my-zsh" pull --ff-only
+    return
+  fi
+
+  if [ -r "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
+    log "ok: Oh My Zsh already installed"
+    return
+  fi
+
+  if [ -e "$HOME/.oh-my-zsh" ]; then
+    log "skip: $HOME/.oh-my-zsh exists and is not a git checkout"
+    return
+  fi
+
+  if ! have git; then
+    log "skip: git is required to install Oh My Zsh"
+    return
+  fi
+
+  clone_or_update https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh"
+}
+
+install_zsh_plugins() {
+  local plugin_home="$HOME/.oh-my-zsh/custom/plugins"
+
+  if ! have git; then
+    log "skip: git is required to install zsh plugins"
+    return
+  fi
+
+  if [ "$DRY_RUN" -ne 1 ] && [ ! -r "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
+    log "skip: Oh My Zsh is not installed"
+    return
+  fi
+
+  ensure_dir "$plugin_home"
+  clone_or_update https://github.com/zsh-users/zsh-autosuggestions.git "$plugin_home/zsh-autosuggestions"
+  clone_or_update https://github.com/zsh-users/zsh-syntax-highlighting.git "$plugin_home/zsh-syntax-highlighting"
+  clone_or_update https://github.com/zsh-users/zsh-history-substring-search.git "$plugin_home/zsh-history-substring-search"
+  clone_or_update https://github.com/zsh-users/zsh-completions.git "$plugin_home/zsh-completions"
+  clone_or_update https://github.com/Aloxaf/fzf-tab.git "$plugin_home/fzf-tab"
+}
+
 install_tools() {
-  install_apt_packages
+  install_homebrew
+  install_brew_packages
   install_fzf_user
   install_starship
   install_oh_my_zsh
@@ -288,6 +321,16 @@ link_dotfiles() {
   link_file "$SCRIPT_DIR/home/.zprofile" "$HOME/.zprofile"
   link_file "$SCRIPT_DIR/config/starship.toml" "${XDG_CONFIG_HOME:-$HOME/.config}/starship.toml"
 }
+
+if ! is_macos; then
+  log "error: install-macos.sh only supports macOS"
+  exit 1
+fi
+
+if [ "$(id -u)" -eq 0 ]; then
+  log "error: do not run this script as root; --with-root only allows Homebrew bootstrap"
+  exit 1
+fi
 
 if [ "$INSTALL_TOOLS" -eq 1 ]; then
   install_tools
