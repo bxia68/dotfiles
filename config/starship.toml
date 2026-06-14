@@ -67,12 +67,6 @@ command = 'hostname -s 2>/dev/null || hostname'
 format = '[LOCAL:$output]($style) '
 style = 'bold fg:base bg:green'
 
-[custom.ssh_container_context]
-when = 'test "$DOTFILES_SHELL_CONTEXT" = container'
-command = 'hostname -s 2>/dev/null || hostname'
-format = '[CTR:$output]($style) '
-style = 'bold fg:base bg:peach'
-
 [custom.remote_context]
 when = 'test "$DOTFILES_SHELL_CONTEXT" = ssh'
 command = 'hostname -s 2>/dev/null || hostname'

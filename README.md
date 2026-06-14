@@ -92,14 +92,13 @@ Starship shows a context badge at the start of the prompt:
 
 - `LOCAL:<host>` for local shells
 - `SSH:<host>` for remote shells
-- `CTR:<host>` for obvious container shells
 - custom `<label>:<host>` badges from local config
 
-This is automatic by default. The zsh config sets `DOTFILES_SHELL_CONTEXT` to `local`, `ssh`, or `container`, and Starship uses that value. Container detection is intentionally simple: it checks common container env vars and files such as `/.dockerenv` and `/run/.containerenv`.
+This is automatic by default for local and SSH shells. The zsh config sets `DOTFILES_SHELL_CONTEXT` to `local` or `ssh`, and Starship uses that value.
 
 The local badge is hidden on `Bills-Laptop` to keep the normal local prompt quiet.
 
-For reliable container or machine-specific badges, set a custom context in `~/.config/shell/env.local.zsh`:
+For container or machine-specific badges, set a custom context in `~/.config/shell/env.local.zsh`:
 
 ```sh
 export DOTFILES_CONTEXT_LABEL=CTR
@@ -117,14 +116,13 @@ DOTFILES_CONTEXT_COLOR=peach
 
 There is also a copyable example at [config/shell/context.container.example](config/shell/context.container.example).
 
-Custom context env vars win first. If they are absent, zsh reads `~/.config/shell/context`; if that file is absent too, it falls back to automatic container/SSH/local detection. The old boolean marker `~/.config/shell/container` still works and maps to `CTR` with `peach`.
+Custom context env vars win first. If they are absent, zsh reads `~/.config/shell/context`; if that file is absent too, it falls back to automatic SSH/local detection.
 
 To force one of the built-in contexts instead, set one of these in `~/.config/shell/env.local.zsh`:
 
 ```sh
 export DOTFILES_SHELL_CONTEXT_OVERRIDE=local
 export DOTFILES_SHELL_CONTEXT_OVERRIDE=ssh
-export DOTFILES_SHELL_CONTEXT_OVERRIDE=container
 ```
 
 For a direct `ssh cuda-container` style connection, remember that the SSH alias `cuda-container` is only known to your local SSH client. If it still shows `SSH:<host>`, use the custom context env vars or file above inside that container.

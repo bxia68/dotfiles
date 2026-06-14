@@ -36,9 +36,7 @@ _dotfiles_use_custom_context() {
 }
 
 _dotfiles_use_auto_context() {
-  if [[ -n "${container:-}${CONTAINER:-}" || -f /.dockerenv || -f /run/.containerenv ]]; then
-    export DOTFILES_SHELL_CONTEXT=container
-  elif [[ -n "${SSH_CONNECTION}${SSH_TTY}" ]]; then
+  if [[ -n "${SSH_CONNECTION}${SSH_TTY}" ]]; then
     export DOTFILES_SHELL_CONTEXT=ssh
   else
     export DOTFILES_SHELL_CONTEXT=local
@@ -46,16 +44,12 @@ _dotfiles_use_auto_context() {
 }
 
 case "${DOTFILES_SHELL_CONTEXT_OVERRIDE:-}" in
-  local|ssh|container)
+  local|ssh)
     export DOTFILES_SHELL_CONTEXT="$DOTFILES_SHELL_CONTEXT_OVERRIDE"
     ;;
   *)
     if _dotfiles_use_custom_context; then
       :
-    elif [[ -e "$HOME/.config/shell/container" ]]; then
-      export DOTFILES_CONTEXT_LABEL=CTR
-      export DOTFILES_CONTEXT_COLOR=peach
-      _dotfiles_use_custom_context
     else
       _dotfiles_use_auto_context
     fi

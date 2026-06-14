@@ -6,5 +6,5 @@
 # export DOTFILES_CONTEXT_LABEL=CTR
 # export DOTFILES_CONTEXT_COLOR=peach
 #
-# Force the prompt context on unusual hosts:
-# export DOTFILES_SHELL_CONTEXT_OVERRIDE=container
+# Force the built-in prompt context on unusual hosts:
+# export DOTFILES_SHELL_CONTEXT_OVERRIDE=ssh
