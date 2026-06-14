@@ -1,4 +1,5 @@
 add_newline = true
+palette = 'catppuccin_mocha'
 format = """
 $custom\
 $username\
@@ -12,56 +13,65 @@ $character"""
 
 right_format = "$jobs$status"
 
+[palettes.catppuccin_mocha]
+base = '#1e1e2e'
+text = '#cdd6f4'
+green = '#a6e3a1'
+red = '#f38ba8'
+blue = '#89b4fa'
+mauve = '#cba6f7'
+yellow = '#f9e2af'
+
 # Local vs remote is detected from SSH_CONNECTION/SSH_TTY.
 # Change format labels or style colors here if you want a stronger distinction.
 [custom.local_context]
 when = 'test -z "${SSH_CONNECTION}${SSH_TTY}"'
 command = 'hostname -s 2>/dev/null || hostname'
 format = '[LOCAL:$output]($style) '
-style = 'bold black bg:green'
+style = 'bold fg:base bg:green'
 
 [custom.remote_context]
 when = 'test -n "${SSH_CONNECTION}${SSH_TTY}"'
 command = 'hostname -s 2>/dev/null || hostname'
 format = '[SSH:$output]($style) '
-style = 'bold white bg:red'
+style = 'bold fg:base bg:red'
 
 [username]
 format = '[$user]($style) '
 show_always = false
-style_user = 'bold yellow'
-style_root = 'bold white bg:red'
+style_user = 'bold fg:yellow'
+style_root = 'bold fg:base bg:red'
 
 [directory]
 truncation_length = 4
 truncate_to_repo = false
 read_only = ' ro'
-style = 'bold blue'
+style = 'bold fg:blue'
 
 [git_branch]
 format = '[$symbol$branch(:$remote_branch)]($style) '
 symbol = 'git:'
-style = 'bold purple'
+style = 'bold fg:mauve'
 
 [git_status]
 format = '([$all_status$ahead_behind]($style) )'
-style = 'bold red'
+style = 'bold fg:red'
 
 [git_state]
 format = '([$state( $progress_current/$progress_total)]($style) )'
-style = 'bold yellow'
+style = 'bold fg:yellow'
 
 [cmd_duration]
 min_time = 1000
 format = '[took $duration]($style) '
-style = 'yellow'
+style = 'fg:yellow'
 
 [status]
 disabled = false
 format = '[exit $status]($style) '
-style = 'bold red'
+style = 'bold fg:red'
 
 [character]
-success_symbol = '[>](bold green)'
-error_symbol = '[>](bold red)'
-vimcmd_symbol = '[<](bold green)'
+success_symbol = '[>](bold fg:green)'
+error_symbol = '[>](bold fg:red)'
+vimcmd_symbol = '[<](bold fg:green)'

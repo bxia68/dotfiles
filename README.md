@@ -52,16 +52,21 @@ This is automatic. The Starship config checks `SSH_CONNECTION` and `SSH_TTY`; wh
 To make the distinction more obvious, edit [config/starship.toml](config/starship.toml):
 
 ```toml
+[palettes.catppuccin_mocha]
+base = '#1e1e2e'
+green = '#a6e3a1'
+red = '#f38ba8'
+
 [custom.local_context]
 format = '[LOCAL:$output]($style) '
-style = 'bold black bg:green'
+style = 'bold fg:base bg:green'
 
 [custom.remote_context]
 format = '[SSH:$output]($style) '
-style = 'bold white bg:red'
+style = 'bold fg:base bg:red'
 ```
 
-The easiest changes are the label text (`LOCAL` / `SSH`) and the background colors (`bg:green` / `bg:red`). For example, use `format = '[REMOTE:$output]($style) '` or `style = 'bold white bg:purple'`.
+The easiest changes are the label text (`LOCAL` / `SSH`) and the badge colors. For example, use `format = '[REMOTE:$output]($style) '`, change `red`, or change `style` to another palette color such as `style = 'bold fg:base bg:mauve'`.
 
 ## Shell Plugins
 
